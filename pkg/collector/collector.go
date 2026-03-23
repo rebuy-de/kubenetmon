@@ -15,7 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog/log"
-	"github.com/ti-mo/conntrack"
+	"github.com/ClickHouse/conntrack"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
@@ -131,7 +131,10 @@ func (collector *Collector) collectOnce() error {
 	}
 
 	now := collector.clock.Now()
-	flows, err := collector.conntrack.Dump(&conntrack.DumpOptions{ZeroCounters: true})
+	flows, err := collector.conntrack.DumpFlowSummaryFilter(
+		conntrack.NewExcludeUDPFilter(),
+		&conntrack.DumpOptions{ZeroCounters: true, Family: conntrack.ProtoIPv4},
+	)
 	if err != nil {
 		return fmt.Errorf("could not dump conntrack: %v", err)
 	}
@@ -185,7 +188,10 @@ func (collector *Collector) collectOnce() error {
 func (collector *Collector) conntrackCountsNonEmpty(uptimeWaitDuration time.Duration) (bool, error) {
 	for {
 		// Check conntrack counters.
-		flows, err := collector.conntrack.Dump(&conntrack.DumpOptions{ZeroCounters: false})
+		flows, err := collector.conntrack.DumpFlowSummaryFilter(
+			conntrack.NewExcludeUDPFilter(),
+			&conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4},
+		)
 		if err != nil {
 			return false, err
 		}
@@ -224,7 +230,7 @@ func (collector *Collector) conntrackCountsNonEmpty(uptimeWaitDuration time.Dura
 
 // shouldIgnoreFlow returns true if the flow is to be ignored and not reported
 // to the server for labelling, for example because it's a localhost flow.
-func (collector *Collector) shouldIgnoreFlow(flow *conntrack.Flow) bool {
+func (collector *Collector) shouldIgnoreFlow(flow *conntrack.FlowSummary) bool {
 	// Ignore flows with no data to report.
 	if flow.CountersOrig.Bytes == 0 && flow.CountersOrig.Packets == 0 && flow.CountersReply.Bytes == 0 && flow.CountersReply.Packets == 0 {
 		return true

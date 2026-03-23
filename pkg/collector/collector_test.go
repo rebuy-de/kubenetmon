@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ti-mo/conntrack"
+	"github.com/ClickHouse/conntrack"
 	"go.uber.org/mock/gomock"
 
 	mock_collector "github.com/ClickHouse/kubenetmon/pkg/collector/mock"
@@ -26,7 +26,7 @@ func TestNewCollector(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return(nil, errFake)
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return(nil, errFake)
 		collector, err := NewCollector(mockConntrack, nil, nil, 15*time.Second, "node", false, 1*time.Second)
 		assert.Error(t, err)
 		assert.Nil(t, collector)
@@ -36,7 +36,7 @@ func TestNewCollector(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return([]conntrack.Flow{
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{
 			{
 				CountersOrig: conntrack.Counter{
 					Packets: 0,
@@ -53,7 +53,7 @@ func TestNewCollector(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return([]conntrack.Flow{
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{
 			{
 				CountersOrig: conntrack.Counter{
 					Packets: 0,
@@ -81,7 +81,7 @@ func TestConntrackCountsNonEmpty(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return([]conntrack.Flow{
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{
 			{
 				CountersOrig: conntrack.Counter{
 					Packets: 0,
@@ -109,7 +109,7 @@ func TestConntrackCountsNonEmpty(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return([]conntrack.Flow{
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{
 			{
 				CountersOrig: conntrack.Counter{
 					Packets: 0,
@@ -137,7 +137,7 @@ func TestConntrackCountsNonEmpty(t *testing.T) {
 		t.Parallel()
 
 		mockConntrack := mock_collector.NewConntrack(ctrl)
-		mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return(nil, errFake)
+		mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return(nil, errFake)
 
 		collector := Collector{
 			conntrack: mockConntrack,
@@ -156,7 +156,7 @@ func TestShouldIgnoreFlow(t *testing.T) {
 		t.Parallel()
 
 		collector := Collector{}
-		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.Flow{
+		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.FlowSummary{
 			CountersOrig: conntrack.Counter{
 				Packets: 0,
 				Bytes:   0,
@@ -169,7 +169,7 @@ func TestShouldIgnoreFlow(t *testing.T) {
 		t.Parallel()
 
 		collector := Collector{}
-		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.Flow{
+		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.FlowSummary{
 			TupleOrig: conntrack.Tuple{
 				Proto: conntrack.ProtoTuple{
 					Protocol: 123,
@@ -187,7 +187,7 @@ func TestShouldIgnoreFlow(t *testing.T) {
 		t.Parallel()
 
 		collector := Collector{}
-		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.Flow{
+		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.FlowSummary{
 			TupleOrig: conntrack.Tuple{
 				Proto: conntrack.ProtoTuple{
 					Protocol: IP_PROTO_TCP,
@@ -209,7 +209,7 @@ func TestShouldIgnoreFlow(t *testing.T) {
 		t.Parallel()
 
 		collector := Collector{}
-		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.Flow{
+		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.FlowSummary{
 			TupleOrig: conntrack.Tuple{
 				Proto: conntrack.ProtoTuple{
 					Protocol: IP_PROTO_TCP,
@@ -231,7 +231,7 @@ func TestShouldIgnoreFlow(t *testing.T) {
 		t.Parallel()
 
 		collector := Collector{}
-		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.Flow{
+		shouldIgnore := collector.shouldIgnoreFlow(&conntrack.FlowSummary{
 			TupleOrig: conntrack.Tuple{
 				Proto: conntrack.ProtoTuple{
 					Protocol: IP_PROTO_TCP,
@@ -280,7 +280,7 @@ func TestCollect(t *testing.T) {
 	)
 
 	mockConntrack := mock_collector.NewConntrack(ctrl)
-	mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: false}).Return([]conntrack.Flow{
+	mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: false, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{
 		{
 			CountersReply: conntrack.Counter{
 				Packets: 0,
@@ -288,7 +288,7 @@ func TestCollect(t *testing.T) {
 			},
 		},
 	}, nil)
-	mockConntrack.EXPECT().Dump(&conntrack.DumpOptions{ZeroCounters: true}).Return([]conntrack.Flow{{
+	mockConntrack.EXPECT().DumpFlowSummaryFilter(conntrack.NewExcludeUDPFilter(), &conntrack.DumpOptions{ZeroCounters: true, Family: conntrack.ProtoIPv4}).Return([]conntrack.FlowSummary{{
 		CountersOrig: conntrack.Counter{
 			Packets: origPackets,
 			Bytes:   origBytes,
