@@ -65,8 +65,14 @@ func NewWatcher(cluster string, clientset kubernetes.Interface) (*Watcher, error
 	podInformer = factory.Core().V1().Pods().Informer()
 	if err := podInformer.AddIndexers(map[string]cache.IndexFunc{
 		indexByIP: func(obj interface{}) ([]string, error) {
+			pod := obj.(*corev1.Pod)
+			// Terminal pods have released their IP; exclude them so a new pod
+			// that was assigned the same IP is found unambiguously.
+			if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+				return nil, nil
+			}
 			var ips []string
-			for _, ip := range obj.(*corev1.Pod).Status.PodIPs {
+			for _, ip := range pod.Status.PodIPs {
 				ips = append(ips, ip.IP)
 			}
 			return ips, nil

@@ -53,6 +53,39 @@ func TestGetPodsByIP(t *testing.T) {
 	assert.Len(t, pods, 0)
 }
 
+func TestGetPodsByIPFiltersTerminalPhases(t *testing.T) {
+	t.Parallel()
+
+	clientSet := fakeClient.NewSimpleClientset()
+	podClient := clientSet.CoreV1().Pods("namespace")
+	watcher, err := NewWatcher("", clientSet)
+	assert.NoError(t, err)
+
+	_, err = podClient.Create(context.Background(), &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "running"},
+		Status:     corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: "5.5.5.5"}}},
+	}, metav1.CreateOptions{})
+	assert.NoError(t, err)
+	_, err = podClient.Create(context.Background(), &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "succeeded"},
+		Status:     corev1.PodStatus{Phase: corev1.PodSucceeded, PodIPs: []corev1.PodIP{{IP: "5.5.5.5"}}},
+	}, metav1.CreateOptions{})
+	assert.NoError(t, err)
+	_, err = podClient.Create(context.Background(), &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "failed"},
+		Status:     corev1.PodStatus{Phase: corev1.PodFailed, PodIPs: []corev1.PodIP{{IP: "5.5.5.5"}}},
+	}, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// Wait for the informers to catch up.
+	time.Sleep(5 * time.Second)
+
+	pods, err := watcher.GetPodsByIP("5.5.5.5")
+	assert.NoError(t, err)
+	assert.Len(t, pods, 1)
+	assert.Equal(t, "running", pods[0].Name)
+}
+
 func TestGetNodeByInternalIP(t *testing.T) {
 	t.Parallel()
 

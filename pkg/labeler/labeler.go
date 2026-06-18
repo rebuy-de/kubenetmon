@@ -426,6 +426,35 @@ func (labeler *Labeler) isNodeFlow(flow *pb.Observation_Flow) (bool, error) {
 	return false, nil
 }
 
+// resolvePodByPhase selects a single pod from candidates. When more than one
+// pod shares an IP (e.g. EKS reusing an IP while a Completed pod lingers),
+// the single Running pod is returned. An error is returned when the ambiguity
+// cannot be resolved.
+func resolvePodByPhase(pods []*corev1.Pod, ip string) (*corev1.Pod, error) {
+	switch len(pods) {
+	case 0:
+		return nil, nil
+	case 1:
+		return pods[0], nil
+	}
+
+	var running []*corev1.Pod
+	for _, p := range pods {
+		if p.Status.Phase == corev1.PodRunning {
+			running = append(running, p)
+		}
+	}
+
+	switch len(running) {
+	case 1:
+		return running[0], nil
+	case 0:
+		return nil, fmt.Errorf("more than one pod maps to IP %v but none are Running: %+v", ip, pods)
+	default:
+		return nil, fmt.Errorf("more than one Running pod maps to IP %v: %+v", ip, running)
+	}
+}
+
 // getEndpointsForFlow finds endpoint information (such as pod identity) for
 // ends of a flow. If err is nil, then srcEndpointInfo and dstEndpointInfo are
 // non-nil.
@@ -446,26 +475,20 @@ func (labeler *Labeler) getEndpointsForFlow(flow *pb.Observation_Flow) (srcEndpo
 	srcPods, err := labeler.GetPodsByIP(srcEndpointInfo.ip.String())
 	if err != nil {
 		return nil, nil, err
-	} else if len(srcPods) == 1 {
-		srcEndpointInfo.pod = srcPods[0]
-	} else if len(srcPods) > 1 {
-		// Typically never happens.
-		return nil, nil, fmt.Errorf("more than one pod maps to origSrc IP %v: %+v", srcEndpointInfo.ip.String(), srcPods)
+	}
+	srcEndpointInfo.pod, err = resolvePodByPhase(srcPods, srcEndpointInfo.ip.String())
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Try to establish identity of the destination pod.
 	dstPods, err := labeler.GetPodsByIP(dstEndpointInfo.ip.String())
 	if err != nil {
 		return nil, nil, err
-	} else if len(dstPods) == 1 {
-		dstEndpointInfo.pod = dstPods[0]
-	} else if len(dstPods) > 1 {
-		// This can happen, for example, because some connections were made to
-		// hostNetwork pods on a node that has now been shut down. These
-		// connections will remain in conntrack for a while longer but there
-		// will be no information about the fact that the replySrc is a now-gone
-		// node.
-		return nil, nil, fmt.Errorf("more than one pod maps to replySrc IP %v: %+v", dstEndpointInfo.ip.String(), dstPods)
+	}
+	dstEndpointInfo.pod, err = resolvePodByPhase(dstPods, dstEndpointInfo.ip.String())
+	if err != nil {
+		return nil, nil, err
 	}
 
 	return srcEndpointInfo, dstEndpointInfo, nil

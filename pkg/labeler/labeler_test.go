@@ -2104,6 +2104,57 @@ func TestGetFlowType(t *testing.T) {
 	})
 }
 
+func TestResolvePodByPhase(t *testing.T) {
+	t.Parallel()
+
+	running := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "running"}, Status: corev1.PodStatus{Phase: corev1.PodRunning}}
+	succeeded := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "succeeded"}, Status: corev1.PodStatus{Phase: corev1.PodSucceeded}}
+	failed := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "failed"}, Status: corev1.PodStatus{Phase: corev1.PodFailed}}
+
+	t.Run("no pods returns nil", func(t *testing.T) {
+		t.Parallel()
+		pod, err := resolvePodByPhase(nil, "1.2.3.4")
+		assert.NoError(t, err)
+		assert.Nil(t, pod)
+	})
+
+	t.Run("single pod is returned as-is", func(t *testing.T) {
+		t.Parallel()
+		pod, err := resolvePodByPhase([]*corev1.Pod{running}, "1.2.3.4")
+		assert.NoError(t, err)
+		assert.Equal(t, running, pod)
+	})
+
+	t.Run("running pod is selected over completed pod", func(t *testing.T) {
+		t.Parallel()
+		pod, err := resolvePodByPhase([]*corev1.Pod{succeeded, running}, "1.2.3.4")
+		assert.NoError(t, err)
+		assert.Equal(t, running, pod)
+	})
+
+	t.Run("running pod is selected when failed pod shares the IP", func(t *testing.T) {
+		t.Parallel()
+		pod, err := resolvePodByPhase([]*corev1.Pod{failed, running}, "1.2.3.4")
+		assert.NoError(t, err)
+		assert.Equal(t, running, pod)
+	})
+
+	t.Run("error when multiple pods share IP but none are running", func(t *testing.T) {
+		t.Parallel()
+		pod, err := resolvePodByPhase([]*corev1.Pod{succeeded, failed}, "1.2.3.4")
+		assert.Error(t, err)
+		assert.Nil(t, pod)
+	})
+
+	t.Run("error when multiple running pods share IP", func(t *testing.T) {
+		t.Parallel()
+		running2 := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "running2"}, Status: corev1.PodStatus{Phase: corev1.PodRunning}}
+		pod, err := resolvePodByPhase([]*corev1.Pod{running, running2}, "1.2.3.4")
+		assert.Error(t, err)
+		assert.Nil(t, pod)
+	})
+}
+
 func TestStringMap(t *testing.T) {
 	m := make(ConnectionFlags)
 	m[TEST_FLAG] = true
