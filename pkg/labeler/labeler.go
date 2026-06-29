@@ -95,6 +95,9 @@ type FlowData struct {
 	LocalIP               netip.Addr
 	LocalPort             uint16
 	LocalApp              string
+	// Best-effort human-readable name for the local endpoint, resolved
+	// coalesce-style (see Labeler.resolveName).
+	LocalName string
 
 	RemoteCloud Cloud
 	// Remote cloud region. If remote is not a k8s pod that kubenetmon server knows
@@ -113,6 +116,10 @@ type FlowData struct {
 	// The cloud service that the remote side associates with based on cloud
 	// provider's IP range, e.g. s3.
 	RemoteCloudService string
+
+	// Best-effort human-readable name for the remote endpoint, resolved
+	// coalesce-style (see Labeler.resolveName).
+	RemoteName string
 
 	// Classification of the connection.
 	ConnectionClass ConnectionClass
@@ -188,11 +195,59 @@ type Labeler struct {
 	ignoreUDP     bool
 	watchers      []watcher.WatcherInterface
 	remoteLabeler *RemoteLabeler
+	// cidrNamer resolves endpoint names from configured CIDR ranges. May be
+	// nil if no cidr_names are configured.
+	cidrNamer *CIDRNamer
 }
 
-// NewLabeler create a Labeler.
-func NewLabeler(watchers []watcher.WatcherInterface, remoteLabeler *RemoteLabeler, ignoreUDP bool) *Labeler {
-	return &Labeler{ignoreUDP, watchers, remoteLabeler}
+// NewLabeler create a Labeler. cidrNamer is variadic so existing callers that
+// don't configure CIDR-based naming compile unchanged; only the first one is
+// used.
+func NewLabeler(watchers []watcher.WatcherInterface, remoteLabeler *RemoteLabeler, ignoreUDP bool, cidrNamer ...*CIDRNamer) *Labeler {
+	var namer *CIDRNamer
+	if len(cidrNamer) > 0 {
+		namer = cidrNamer[0]
+	}
+	return &Labeler{ignoreUDP, watchers, remoteLabeler, namer}
+}
+
+// resolveName produces a best-effort human-readable name for an endpoint,
+// coalescing from the most specific source to the least:
+//  1. "<app.kubernetes.io/name>-<app.kubernetes.io/component>" if both labels exist
+//  2. the app column (LocalApp/RemoteApp, itself app.kubernetes.io/name or k8s-app)
+//  3. a configured CIDR name for the endpoint's IP
+//  4. each extraFallback in order (e.g. remoteCloudService)
+//  5. "UNKNOWN"
+//
+// The app column is passed in rather than re-read from the label so the plain
+// name isn't resolved twice; only the name-component form needs the raw label,
+// since the app column carries neither the component nor the guarantee that it
+// is the name label.
+func (l *Labeler) resolveName(pod *corev1.Pod, app string, ip netip.Addr, extraFallbacks ...string) string {
+	if pod != nil {
+		name := pod.Labels["app.kubernetes.io/name"]
+		if component := pod.Labels["app.kubernetes.io/component"]; name != "" && component != "" {
+			return name + "-" + component
+		}
+	}
+
+	if app != "" {
+		return app
+	}
+
+	if l.cidrNamer != nil {
+		if n := l.cidrNamer.Lookup(ip); n != "" {
+			return n
+		}
+	}
+
+	for _, f := range extraFallbacks {
+		if f != "" {
+			return f
+		}
+	}
+
+	return "UNKNOWN"
 }
 
 func (labeler *Labeler) GetNodeByName(name string) (*corev1.Node, error) {
@@ -373,6 +428,12 @@ func (labeler *Labeler) LabelFlow(node string, flow *pb.Observation_Flow) (*Flow
 	}
 
 	data.RemoteCluster = "UNKNOWN"
+
+	// Resolve display names last, once pod info, RemoteApp, and
+	// RemoteCloudService have all been populated.
+	data.LocalName = labeler.resolveName(localInfo.pod, data.LocalApp, data.LocalIP)
+	data.RemoteName = labeler.resolveName(remoteInfo.pod, data.RemoteApp, data.RemoteIP, data.RemoteCloudService)
+
 	return data, nil
 }
 

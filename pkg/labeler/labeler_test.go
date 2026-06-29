@@ -435,12 +435,14 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           "",
 			RemoteIP:              origDstIP,
 			RemotePort:            origDstPort,
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       PublicInternet,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            "UNKNOWN",
 		}, *data)
 	})
 
@@ -559,12 +561,14 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           "",
 			RemoteIP:              origDstIP,
 			RemotePort:            origDstPort,
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       PublicInternet,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            "UNKNOWN",
 		}, *data)
 	})
 
@@ -699,6 +703,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:                origDstIP,
 			LocalPort:              origDstPort,
 			LocalApp:               localApp,
+			LocalName:              localApp,
 			RemoteCloud:            AWS,
 			RemoteIP:               origSrcIP,
 			RemotePort:             origSrcPort,
@@ -708,6 +713,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteNamespace:        remoteNamespace,
 			RemotePod:              remotePod,
 			RemoteApp:              remoteApp,
+			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
 			ConnectionClass:        IntraVPC,
 			ConnectionFlags:        make(ConnectionFlags),
@@ -839,6 +845,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:                origSrcIP,
 			LocalPort:              origSrcPort,
 			LocalApp:               localApp,
+			LocalName:              localApp,
 			RemoteCloud:            AWS,
 			RemoteIP:               origDstIP,
 			RemotePort:             origDstPort,
@@ -848,6 +855,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteNamespace:        remoteNamespace,
 			RemotePod:              remotePod,
 			RemoteApp:              remoteApp,
+			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
 			ConnectionClass:        IntraVPC,
 			ConnectionFlags:        make(ConnectionFlags),
@@ -1011,6 +1019,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:                origSrcIP,
 			LocalPort:              origSrcPort,
 			LocalApp:               localApp,
+			LocalName:              localApp,
 			RemoteCloud:            AWS,
 			RemoteIP:               replySrcIP,
 			RemotePort:             replySrcPort,
@@ -1020,6 +1029,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteNamespace:        remoteNamespace,
 			RemotePod:              remotePod,
 			RemoteApp:              remoteApp,
+			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
 			ConnectionClass:        IntraVPC,
 			ConnectionFlags:        make(ConnectionFlags),
@@ -1161,6 +1171,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:                origSrcIP,
 			LocalPort:              origSrcPort,
 			LocalApp:               localApp,
+			LocalName:              localApp,
 			RemoteCloud:            Azure,
 			RemoteIP:               replySrcIP,
 			RemotePort:             replySrcPort,
@@ -1170,6 +1181,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteNamespace:        remoteNamespace,
 			RemotePod:              remotePod,
 			RemoteApp:              remoteApp,
+			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
 			ConnectionClass:        IntraVPC,
 			ConnectionFlags:        make(ConnectionFlags),
@@ -1313,6 +1325,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           remoteCloud,
 			RemoteRegion:          remoteRegion,
 			RemoteCloudService:    remoteCloudService,
@@ -1321,6 +1334,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       InterRegion,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            remoteCloudService,
 		}, *data)
 	})
 
@@ -1461,6 +1475,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           remoteCloud,
 			RemoteRegion:          remoteRegion,
 			RemoteCloudService:    remoteCloudService,
@@ -1469,6 +1484,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       IntraRegion,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            remoteCloudService,
 		}, *data)
 	})
 
@@ -1617,6 +1633,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           remoteCloud,
 			RemoteRegion:          remoteRegion,
 			RemoteCloudService:    remoteCloudService,
@@ -1625,6 +1642,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       IntraRegion,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            remoteCloudService,
 		}, *data)
 	})
 
@@ -1760,6 +1778,7 @@ func TestLabelFlow(t *testing.T) {
 			LocalIP:               origSrcIP,
 			LocalPort:             origSrcPort,
 			LocalApp:              localApp,
+			LocalName:             localApp,
 			RemoteCloud:           remoteCloud,
 			RemoteRegion:          remoteRegion,
 			RemoteCloudService:    "googlecloud",
@@ -1768,6 +1787,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteCluster:         "UNKNOWN",
 			ConnectionClass:       InterRegion,
 			ConnectionFlags:       make(ConnectionFlags),
+			RemoteName:            "googlecloud",
 		}, *data)
 	})
 }

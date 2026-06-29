@@ -47,6 +47,10 @@ type Config struct {
 	ClickHouseDisableTLS         bool          `yaml:"clickhouse_disable_tls"`
 	ClickHouseInsecureSkipVerify bool          `yaml:"clickhouse_insecure_skip_verify"`
 
+	// CIDRNames maps IP ranges to names used to resolve localName/remoteName
+	// when an endpoint isn't a known pod.
+	CIDRNames []labeler.CIDRMapping `yaml:"cidr_names"`
+
 	ClickHouseUsername string
 	ClickHousePassword string
 }
@@ -159,7 +163,12 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to create Remotelabeler")
 	}
 
-	labeler := labeler.NewLabeler(allWatchers, remoteLabeler, *configMap.IgnoreUDP)
+	cidrNamer, err := labeler.NewCIDRNamer(configMap.CIDRNames)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to parse cidr_names")
+	}
+
+	labeler := labeler.NewLabeler(allWatchers, remoteLabeler, *configMap.IgnoreUDP, cidrNamer)
 	runtimeInfo := inserter.RuntimeInfo{Cloud: cloud, Env: environment, Region: region, Cluster: configMap.Cluster}
 	clickhouseOptions := inserter.ClickHouseOptions{
 		Database: configMap.ClickHouseDatabase,

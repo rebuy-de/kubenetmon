@@ -20,6 +20,7 @@ CREATE TABLE default.network_flows_0
     `localIPv4` IPv4 CODEC(Delta(4), ZSTD(1)),
     `localPort` UInt16 CODEC(Delta(2), ZSTD(1)),
     `localApp` String CODEC(ZSTD(1)),
+    `localName` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCloud` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteRegion` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCluster` LowCardinality(String) CODEC(ZSTD(1)),
@@ -32,6 +33,7 @@ CREATE TABLE default.network_flows_0
     `remoteIPv4` IPv4 CODEC(Delta(4), ZSTD(1)),
     `remotePort` UInt16 CODEC(Delta(2), ZSTD(1)),
     `remoteApp` String CODEC(ZSTD(1)),
+    `remoteName` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCloudService` LowCardinality(String) CODEC(ZSTD(1)),
     `bytes` UInt64 CODEC(Delta(8), ZSTD(1)),
     `packets` UInt64 CODEC(Delta(8), ZSTD(1))

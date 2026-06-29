@@ -55,6 +55,7 @@ CREATE TABLE default.network_flows_0
     `localIPv4` IPv4 CODEC(Delta(4), ZSTD(1)),
     `localPort` UInt16 CODEC(Delta(2), ZSTD(1)),
     `localApp` String CODEC(ZSTD(1)),
+    `localName` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCloud` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteRegion` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCluster` LowCardinality(String) CODEC(ZSTD(1)),
@@ -67,6 +68,7 @@ CREATE TABLE default.network_flows_0
     `remoteIPv4` IPv4 CODEC(Delta(4), ZSTD(1)),
     `remotePort` UInt16 CODEC(Delta(2), ZSTD(1)),
     `remoteApp` String CODEC(ZSTD(1)),
+    `remoteName` LowCardinality(String) CODEC(ZSTD(1)),
     `remoteCloudService` LowCardinality(String) CODEC(ZSTD(1)),
     `bytes` UInt64 CODEC(Delta(8), ZSTD(1)),
     `packets` UInt64 CODEC(Delta(8), ZSTD(1))
@@ -78,6 +80,19 @@ ORDER BY (date, intervalStartTime, direction, proto, localApp, remoteApp, localP
 TTL intervalStartTime + toIntervalDay(90)
 SETTINGS index_granularity = 8192, ttl_only_drop_parts = 1;
 ```
+
+#### Migrating an existing table
+
+If you already run `kubenetmon` against an older `network_flows_0` that predates
+the `localName`/`remoteName` columns, add them in place rather than recreating
+the table:
+```sql
+ALTER TABLE default.network_flows_0
+  ADD COLUMN localName LowCardinality(String) CODEC(ZSTD(1)) AFTER localApp,
+  ADD COLUMN remoteName LowCardinality(String) CODEC(ZSTD(1)) AFTER remoteApp;
+```
+The new columns are populated on rows inserted after the upgrade; existing rows
+keep an empty string. No backfill is required.
 
 All you now need is a Kubernetes cluster where you want to meter data transfer.
 
@@ -127,6 +142,22 @@ We see from the logs that the replica started and connected to our ClickHouse in
 {"level":"info","time":"2025-01-23T20:55:12Z","message":"RemoteLabeler initialized with 43806 prefixes"}
 {"level":"info","time":"2025-01-23T20:55:12Z","message":"Beginning to serve metrics on port :8883/metrics\n"}
 {"level":"info","time":"2025-01-23T20:55:12Z","message":"Beginning to serve flowHandlerServer on port :8884\n"}
+```
+
+#### Naming endpoints by CIDR
+
+`kubenetmon-server` populates `localName` and `remoteName` for every flow. These
+are best-effort display names resolved from the pod's `app.kubernetes.io/name`
+(and `app.kubernetes.io/component`) labels, falling back to `remoteApp` /
+`remoteCloudService` and finally `unknown`. To name endpoints that aren't pods
+we know about (e.g. a managed database reachable on a fixed subnet), add an
+optional `cidr_names` list to the server's `config.yaml` (the ConfigMap mounted
+at `/etc/kubenetmon-server/config.yaml`). The most specific (longest) matching
+prefix wins:
+```yaml
+cidr_names:
+  - cidr: 172.20.5.0/24
+    name: postgres
 ```
 
 All that's left is to deploy `kubenetmon-agent`, a DaemonSet that will track

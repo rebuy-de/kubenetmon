@@ -142,7 +142,7 @@ func (w *worker) processRecord(observation Observation) {
 		resetTimer(w.batchExpirationTimer, w.batchSendTimeout)
 	}
 	w.batch = append(w.batch,
-		fmt.Sprintf("('%v', '%v', %v, '%v', '%v', '%v', %v, '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', %v, %v)",
+		fmt.Sprintf("('%v', '%v', %v, '%v', '%v', '%v', %v, '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', %v, %v)",
 			day,
 			minute,
 			60,
@@ -165,6 +165,7 @@ func (w *worker) processRecord(observation Observation) {
 			observation.Flow.LocalIP,
 			observation.Flow.LocalPort,
 			observation.Flow.LocalApp,
+			observation.Flow.LocalName,
 
 			observation.Flow.RemoteCloud,
 			observation.Flow.RemoteRegion,
@@ -177,12 +178,13 @@ func (w *worker) processRecord(observation Observation) {
 			observation.Flow.RemoteIP,
 			observation.Flow.RemotePort,
 			observation.Flow.RemoteApp,
+			observation.Flow.RemoteName,
 			observation.Flow.RemoteCloudService,
 
 			observation.Flow.BytesOut,
 			observation.Flow.PacketsOut))
 	w.batch = append(w.batch,
-		fmt.Sprintf("('%v', '%v', %v, '%v', '%v', '%v', %v, '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', %v, %v)",
+		fmt.Sprintf("('%v', '%v', %v, '%v', '%v', '%v', %v, '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', '%v', %v, %v)",
 			day,
 			minute,
 			60,
@@ -205,6 +207,7 @@ func (w *worker) processRecord(observation Observation) {
 			observation.Flow.LocalIP,
 			observation.Flow.LocalPort,
 			observation.Flow.LocalApp,
+			observation.Flow.LocalName,
 
 			observation.Flow.RemoteCloud,
 			observation.Flow.RemoteRegion,
@@ -217,6 +220,7 @@ func (w *worker) processRecord(observation Observation) {
 			observation.Flow.RemoteIP,
 			observation.Flow.RemotePort,
 			observation.Flow.RemoteApp,
+			observation.Flow.RemoteName,
 			observation.Flow.RemoteCloudService,
 
 			observation.Flow.BytesIn,
@@ -269,6 +273,7 @@ localPod,
 localIPv4,
 localPort,
 localApp,
+localName,
 remoteCloud,
 remoteRegion,
 remoteCluster,
@@ -280,6 +285,7 @@ remotePod,
 remoteIPv4,
 remotePort,
 remoteApp,
+remoteName,
 remoteCloudService,
 bytes,
 packets
