@@ -10,10 +10,21 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/ClickHouse/kubenetmon/pkg/labeler"
+	"github.com/rs/zerolog/log"
 )
 
 // ErrInsertTimeout is returned by Inserter.Insert.
 var ErrInsertTimeout error = errors.New("insert timed out")
+
+// Startup retry parameters for establishing the ClickHouse connection. ClickHouse
+// may not be reachable yet when kubenetmon-server boots (e.g. during rolling
+// deploys), so we retry a bounded number of times with exponential backoff before
+// giving up.
+const (
+	clickHouseConnectMaxAttempts    = 10
+	clickHouseConnectInitialBackoff = 1 * time.Second
+	clickHouseConnectMaxBackoff     = 30 * time.Second
+)
 
 // RuntimeInfo has some basic information about where this inserter is running.
 // This observation gets inserted into ClickHouse as local endpoint annotations.
@@ -138,13 +149,39 @@ func createClickHouseConnectionWithOptions(ctx context.Context, clickhouseOption
 		options.TLS = &tls.Config{InsecureSkipVerify: clickhouseOptions.InsecureSkipVerify}
 	}
 
-	conn, err := clickhouse.Open(&options)
+	backoff := clickHouseConnectInitialBackoff
+	var lastErr error
+	for attempt := 1; attempt <= clickHouseConnectMaxAttempts; attempt++ {
+		conn, err := tryConnect(ctx, &options, clickhouseOptions.SkipPing)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+
+		// Don't sleep after the final attempt.
+		if attempt == clickHouseConnectMaxAttempts {
+			break
+		}
+		log.Warn().Err(err).Msgf("failed to connect to ClickHouse (attempt %d/%d), retrying in %s",
+			attempt, clickHouseConnectMaxAttempts, backoff)
+		time.Sleep(backoff)
+		backoff = min(backoff*2, clickHouseConnectMaxBackoff)
+	}
+
+	return nil, fmt.Errorf("failed to connect to ClickHouse after %d attempts: %w",
+		clickHouseConnectMaxAttempts, lastErr)
+}
+
+// tryConnect performs a single ClickHouse connection attempt: it opens the
+// connection and, unless skipPing is set, verifies it with a ping.
+func tryConnect(ctx context.Context, options *clickhouse.Options, skipPing bool) (driver.Conn, error) {
+	conn, err := clickhouse.Open(options)
 	if err != nil {
 		return nil, err
 	}
 
 	// Test ClickHouse connection.
-	if !clickhouseOptions.SkipPing {
+	if !skipPing {
 		if err := conn.Ping(ctx); err != nil {
 			if exception, ok := err.(*clickhouse.Exception); ok {
 				err = fmt.Errorf("exception [%d] %s\n%s", exception.Code, exception.Message, exception.StackTrace)
