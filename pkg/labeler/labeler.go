@@ -53,6 +53,8 @@ func (c ConnectionClass) String() string {
 const (
 	Unknown        ConnectionClass = "UNKNOWN"
 	IntraVPC       ConnectionClass = "INTRA_VPC"
+	IntraAZ        ConnectionClass = "INTRA_AZ"
+	InterAZ        ConnectionClass = "INTER_AZ"
 	IntraRegion    ConnectionClass = "INTRA_REGION"
 	InterRegion    ConnectionClass = "INTER_REGION"
 	PublicInternet ConnectionClass = "PUBLIC_INTERNET"
@@ -429,12 +431,29 @@ func (labeler *Labeler) LabelFlow(node string, flow *pb.Observation_Flow) (*Flow
 
 	data.RemoteCluster = "UNKNOWN"
 
+	// Refine the IP-derived class now that both availability zones are known.
+	refineConnectionClassByZone(data)
+
 	// Resolve display names last, once pod info, RemoteApp, and
 	// RemoteCloudService have all been populated.
 	data.LocalName = labeler.resolveName(localInfo.pod, data.LocalApp, data.LocalIP)
 	data.RemoteName = labeler.resolveName(remoteInfo.pod, data.RemoteApp, data.RemoteIP, data.RemoteCloudService)
 
 	return data, nil
+}
+
+// refineConnectionClassByZone mirrors the dashboard query's multiIf: when both
+// availability zones are known, the connection class is refined to INTRA_AZ or
+// INTER_AZ. Otherwise the IP-derived class set by labelRemote is kept.
+func refineConnectionClassByZone(data *FlowData) {
+	if data.LocalAvailabilityZone == "" || data.RemoteAvailabilityZone == "" {
+		return
+	}
+	if data.LocalAvailabilityZone == data.RemoteAvailabilityZone {
+		data.ConnectionClass = IntraAZ
+		return
+	}
+	data.ConnectionClass = InterAZ
 }
 
 func (labeler *Labeler) isIPv6Flow(flow *pb.Observation_Flow) (bool, error) {

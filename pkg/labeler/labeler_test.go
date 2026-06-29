@@ -715,7 +715,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteApp:              remoteApp,
 			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
-			ConnectionClass:        IntraVPC,
+			ConnectionClass:        InterAZ,
 			ConnectionFlags:        make(ConnectionFlags),
 		}, *data)
 	})
@@ -857,7 +857,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteApp:              remoteApp,
 			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
-			ConnectionClass:        IntraVPC,
+			ConnectionClass:        IntraAZ,
 			ConnectionFlags:        make(ConnectionFlags),
 		}, *data)
 	})
@@ -1031,7 +1031,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteApp:              remoteApp,
 			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
-			ConnectionClass:        IntraVPC,
+			ConnectionClass:        InterAZ,
 			ConnectionFlags:        make(ConnectionFlags),
 		}, *data)
 	})
@@ -1183,7 +1183,7 @@ func TestLabelFlow(t *testing.T) {
 			RemoteApp:              remoteApp,
 			RemoteName:             remoteApp,
 			RemoteCluster:          "UNKNOWN",
-			ConnectionClass:        IntraVPC,
+			ConnectionClass:        InterAZ,
 			ConnectionFlags:        make(ConnectionFlags),
 		}, *data)
 	})
